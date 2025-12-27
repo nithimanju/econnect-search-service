@@ -1,6 +1,5 @@
 package com.e_connect.search.search.service;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -12,6 +11,7 @@ import org.opensearch.client.opensearch._types.FieldValue;
 import org.opensearch.client.opensearch._types.query_dsl.BoolQuery;
 import org.opensearch.client.opensearch._types.query_dsl.NestedQuery;
 import org.opensearch.client.opensearch._types.query_dsl.Query;
+import org.opensearch.client.opensearch._types.query_dsl.TermsQueryField;
 import org.opensearch.client.opensearch.core.SearchRequest;
 import org.opensearch.client.opensearch.core.SearchResponse;
 import org.springframework.stereotype.Service;
@@ -32,7 +32,6 @@ import com.e_connect.search.search.dto.ItemSearchRequest;
 import com.e_connect.search.search.dto.ItemSearchResponse;
 import com.e_connect.search.search.dto.ItemSearchReturnResponse;
 
-import co.elastic.clients.elasticsearch.ml.Filter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 
@@ -53,9 +52,6 @@ public class ItemSearchService {
     Map<String, Float> nestedBoastFieldMap = new HashMap<>();
     nestedBoastFieldMap.put("itemTitles.title.autocomplete", 1F);
     nestedBoastFieldMap.put("itemDescriptions.description", 1F);
-
-    Map<String, Float> boastFieldMap = new HashMap<>();
-    boastFieldMap.put("suggest", 1F);
 
     boolQueryBuilder
         .should(getNestPhaseMatchQueries(queryString, nestedBoastFieldMap, languageCode));
@@ -109,16 +105,20 @@ public class ItemSearchService {
     Map<String, Float> nestedBoastFieldMap = new HashMap<>();
     nestedBoastFieldMap.put("itemTitles.title.autocomplete", 1F);
     nestedBoastFieldMap.put("itemDescriptions.description", 1F);
-
-    Map<String, Float> boastFieldMap = new HashMap<>();
-    boastFieldMap.put("suggest", 1F);
-
-    boolQueryBuilder
-        .should(getNestPhaseMatchQueries(queryString, nestedBoastFieldMap, languageCode));
-    boolQueryBuilder.should(getMatchPhasePrefix(queryString, nestedBoastFieldMap));
-    boolQueryBuilder.should(getBoolPhasePrefix(queryString, nestedBoastFieldMap));
+    if (StringUtils.isNotBlank(queryString)) {
+      boolQueryBuilder
+          .should(getNestPhaseMatchQueries(queryString, nestedBoastFieldMap, languageCode));
+      boolQueryBuilder.should(getMatchPhasePrefix(queryString, nestedBoastFieldMap));
+      boolQueryBuilder.should(getBoolPhasePrefix(queryString, nestedBoastFieldMap));
+    }
     if (ObjectUtils.isNotEmpty(filters)) {
       boolQueryBuilder.filter(getFilterQuery(filters));
+    }
+    if(ObjectUtils.isNotEmpty(itemSearchRequest.getCategoryIds())){
+      boolQueryBuilder.filter(getTerms("categoryId", itemSearchRequest.getCategoryIds()));
+    }
+    if(ObjectUtils.isNotEmpty(itemSearchRequest.getBrandIds())){
+      boolQueryBuilder.filter(getTerms("brandId", itemSearchRequest.getBrandIds()));
     }
 
     SearchRequest.Builder requestBuilder = new SearchRequest.Builder()
@@ -280,10 +280,10 @@ public class ItemSearchService {
   }
 
   // private Query getFilterForList(Map<String, String> filters) {
-  //   return Query.of(f -> f.nested(nf -> nf
-  //       .path("itemAttributes")
-  //       .query(fq -> fq.bool(
-  //           bf -> bf.must(getFilterQuery(filters))))));
+  // return Query.of(f -> f.nested(nf -> nf
+  // .path("itemAttributes")
+  // .query(fq -> fq.bool(
+  // bf -> bf.must(getFilterQuery(filters))))));
   // }
 
   private List<Query> getFilterQuery(Map<String, List<String>> filters) {
@@ -301,5 +301,11 @@ public class ItemSearchService {
                                   .value(FieldValue.of(value)))))))))))));
       return queries;
     }
+  }
+
+  private Query getTerms(String field, List<String> values) {
+    return Query.of(q -> q.terms(
+        tr -> tr.field(field).terms(
+            TermsQueryField.of(tq -> tq.value(values.stream().map(value -> FieldValue.of(value)).toList())))));
   }
 }

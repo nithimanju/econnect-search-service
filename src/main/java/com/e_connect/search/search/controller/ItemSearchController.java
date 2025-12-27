@@ -17,10 +17,12 @@ import com.e_connect.search.search.service.ItemSearchCacheService;
 import com.e_connect.search.search.service.ItemSearchService;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.log4j.Log4j2;
 
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/item")
+@Log4j2
 public class ItemSearchController {
 
   private final ItemSearchService itemSearchService;

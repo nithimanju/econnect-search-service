@@ -4,7 +4,6 @@ import java.util.List;
 import java.util.Map;
 
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -22,4 +21,6 @@ public class ItemAutoCompleteRequest {
     private List<String> notRequiredResults;
     private Map<String, List<String>> filterValues;
     private String languageCode;
+    private List<String> categoryIds;
+    private List<String> brandIds;
 }
